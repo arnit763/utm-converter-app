@@ -150,6 +150,31 @@
             transform: translateY(0);
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
         }
+        .go-to-map-button {
+            background: linear-gradient(135deg, #a855f7, #9333ea); /* Purple gradient */
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            font-size: 1.125rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin: 1.5rem auto 0 auto; /* Center button */
+        }
+        .go-to-map-button:hover {
+            background: linear-gradient(135deg, #9333ea, #7e22ce);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+            transform: translateY(-2px);
+        }
+        .go-to-map-button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
         .input-group {
             display: flex;
             gap: 1rem;
@@ -352,6 +377,12 @@
             </button></p>
         </div>
 
+        <!-- Global "Show on Google Maps" Button -->
+        <button id="showOnMapBtn" class="go-to-map-button hidden">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.828 0l-4.243-4.243m0 0A7.488 7.488 0 012.25 10.5a7.488 7.488 0 017.5-7.5h.025A7.488 7.488 0 0110.5 2.25c.101 0 .193.003.282.008M16.5 12a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z"></path></svg>
+            แสดงบน Google Maps
+        </button>
+
         <!-- Copy Current Page Link -->
         <button id="copyPageLinkBtn" class="copy-link-btn">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-.758l-.207.207m0 0l-.16.16a2 2 0 01-2.828 0M5.828 13.828a4 4 0 005.656 0l4-4a4 4 0 10-5.656-5.656l-1.102 1.101m.758.758l.207-.207m0 0l.16-.16a2 2 0 012.828 0"></path></svg>
@@ -401,11 +432,14 @@
 
         const convertBtn = document.getElementById('convertBtn');
         const copyPageLinkBtn = document.getElementById('copyPageLinkBtn');
+        const showOnMapBtn = document.getElementById('showOnMapBtn'); // New element
         const currentYearSpan = document.getElementById('currentYear');
 
         // Global State Variables
-        let currentConversionMode = 'wgs84ToUtm'; // 'wgs84ToUtm' or 'utmToWgs84'
+        let currentConversionMode = 'wgs84ToUtm'; // 'wgs84ToUtm' or 'utmToWGS84'
         let isDDMode = true; // For WGS84 input: true for Decimal Degrees, false for DMS
+        let lastCalculatedWGS84Lat = null; // Stores the latest WGS84 Latitude for map display
+        let lastCalculatedWGS84Lon = null; // Stores the latest WGS84 Longitude for map display
 
         // --- Initialization ---
         document.addEventListener('DOMContentLoaded', () => {
@@ -413,6 +447,7 @@
             // Set initial state based on default mode
             updateUIMode();
             updateWGS84InputMode();
+            showOnMapBtn.classList.add('hidden'); // Ensure map button is hidden initially
         });
 
         // --- Event Listeners ---
@@ -457,6 +492,7 @@
         });
 
         copyPageLinkBtn.addEventListener('click', copyPageLink);
+        showOnMapBtn.addEventListener('click', goToGoogleMaps); // Event listener for the new map button
 
         // --- UI State Management Functions ---
 
@@ -497,7 +533,7 @@
         }
 
         /**
-         * Clears all displayed results and hides result boxes.
+         * Clears all displayed results and hides result boxes, including the map button.
          */
         function clearAllResults() {
             // WGS84 to UTM results
@@ -512,6 +548,11 @@
             dmsLatResult.textContent = '';
             dmsLonResult.textContent = '';
             utmToWgs84ResultBox.style.display = 'none';
+
+            // Hide map button and clear stored WGS84 coords
+            showOnMapBtn.classList.add('hidden');
+            lastCalculatedWGS84Lat = null;
+            lastCalculatedWGS84Lon = null;
         }
 
         // --- Coordinate Conversion Helper Functions ---
@@ -639,6 +680,12 @@
                 utmEastingResult.textContent = easting.toFixed(2);
                 utmNorthingResult.textContent = northing.toFixed(2);
                 wgs84ToUtmResultBox.style.display = 'flex'; // Show the result box
+
+                // Store WGS84 coords for map button
+                lastCalculatedWGS84Lat = latitude;
+                lastCalculatedWGS84Lon = longitude;
+                showOnMapBtn.classList.remove('hidden'); // Show map button
+
             } catch (error) {
                 console.error("Conversion error (WGS84 to UTM):", error);
                 showErrorAlert('เกิดข้อผิดพลาดในการแปลงค่าพิกัด WGS84 ไป UTM โปรดตรวจสอบข้อมูลและลองอีกครั้ง.');
@@ -691,13 +738,31 @@
                 dmsLonResult.textContent = ddToDms(longitude, 'lon');
 
                 utmToWgs84ResultBox.style.display = 'flex'; // Show the result box
+
+                // Store WGS84 coords for map button
+                lastCalculatedWGS84Lat = latitude;
+                lastCalculatedWGS84Lon = longitude;
+                showOnMapBtn.classList.remove('hidden'); // Show map button
+
             } catch (error) {
                 console.error("Conversion error (UTM to WGS84):", error);
                 showErrorAlert('เกิดข้อผิดพลาดในการแปลงค่าพิกัด UTM ไป WGS84 โปรดตรวจสอบข้อมูลและลองอีกครั้ง.');
             }
         }
 
-        // --- Copy Functions ---
+        // --- Map and Copy Functions ---
+
+        /**
+         * Opens Google Maps with the last calculated WGS84 coordinates.
+         */
+        function goToGoogleMaps() {
+            if (lastCalculatedWGS84Lat !== null && lastCalculatedWGS84Lon !== null) {
+                const mapUrl = `https://www.google.com/maps/search/?api=1&query=${lastCalculatedWGS84Lat},${lastCalculatedWGS84Lon}`;
+                window.open(mapUrl, '_blank');
+            } else {
+                showErrorAlert('ไม่พบค่าพิกัด WGS84 ที่จะแสดงบนแผนที่. โปรดแปลงค่าพิกัดก่อน.');
+            }
+        }
 
         /**
          * Copies the text content of a specified element to the clipboard and shows a SweetAlert.
